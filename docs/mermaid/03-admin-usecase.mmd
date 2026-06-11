@@ -1,0 +1,56 @@
+flowchart TB
+    classDef actor fill:#f5f5f5,stroke:#555,stroke-width:1px,color:#111;
+    classDef usecase fill:#111827,stroke:#c44b36,stroke-width:1px,color:#fff;
+    classDef guard fill:#fef3c7,stroke:#d97706,stroke-width:1px,color:#78350f;
+
+    admin["Admin"]
+
+    login([Login to Admin Dashboard])
+    createBoard([Create Scoreboard])
+    editBoard([Edit Scoreboard])
+    manageCategories([Manage Categories])
+    manageQuestions([Manage Questions])
+    manageOptions([Manage Question Options and Scores])
+    manageRanges([Manage Result Ranges])
+    validateBoard([Validate Scoreboard Readiness])
+    publishBoard([Publish Scoreboard])
+    archiveBoard([Archive Scoreboard])
+    reviewSubs([Review Submission List])
+    reviewDetail([Review Submission Detail])
+    inspectAnswers([Inspect Answers Scores Result Tracking])
+    inspectDelivery([Inspect PDF and Email Delivery State])
+
+    blockedPublish([Fix Incomplete Configuration Before Publish])
+    incompleteData([Handle Missing Result or Delivery Data in Review])
+
+    admin --> login
+    admin --> createBoard
+    admin --> editBoard
+    admin --> manageCategories
+    admin --> manageQuestions
+    admin --> manageOptions
+    admin --> manageRanges
+    admin --> publishBoard
+    admin --> archiveBoard
+    admin --> reviewSubs
+    admin --> reviewDetail
+
+    createBoard --> editBoard
+    editBoard --> manageCategories
+    editBoard --> manageQuestions
+    manageQuestions --> manageOptions
+    editBoard --> manageRanges
+    manageCategories --> validateBoard
+    manageOptions --> validateBoard
+    manageRanges --> validateBoard
+    validateBoard --> publishBoard
+    validateBoard -. invalid .-> blockedPublish
+
+    reviewSubs --> reviewDetail
+    reviewDetail --> inspectAnswers
+    reviewDetail --> inspectDelivery
+    reviewDetail -. partial data .-> incompleteData
+
+    class admin actor;
+    class login,createBoard,editBoard,manageCategories,manageQuestions,manageOptions,manageRanges,validateBoard,publishBoard,archiveBoard,reviewSubs,reviewDetail,inspectAnswers,inspectDelivery usecase;
+    class blockedPublish,incompleteData guard;

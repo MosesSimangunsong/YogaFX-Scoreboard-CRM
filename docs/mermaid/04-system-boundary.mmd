@@ -1,0 +1,62 @@
+flowchart LR
+    classDef center fill:#111827,stroke:#c44b36,stroke-width:2px,color:#fff;
+    classDef allowed fill:#ecfdf5,stroke:#059669,stroke-width:1px,color:#064e3b;
+    classDef forbidden fill:#fef2f2,stroke:#dc2626,stroke-width:1px,color:#7f1d1d;
+
+    system["YogaFX Scoreboard System"]
+
+    allowed1([Capture Lead from Internal Form])
+    allowed2([Receive Lead from Inbound Webhook])
+    allowed3([Create or Match Participant Record])
+    allowed4([Generate Unique Access URL])
+    allowed5([Provide Public Scoreboard Access])
+    allowed6([Store Submission and Raw Answers])
+    allowed7([Calculate Overall and Category Scores])
+    allowed8([Determine Result Range])
+    allowed9([Show Result Page])
+    allowed10([Generate PDF Report])
+    allowed11([Send Follow-Up Email])
+    allowed12([Store Tracking Attribution])
+    allowed13([Allow Admin to Manage Scoreboards])
+    allowed14([Allow Admin to Review Submission Data])
+
+    forbidden1([Run LMS Learning Flow])
+    forbidden2([Manage Modules and Lessons])
+    forbidden3([Track Student Learning Progress])
+    forbidden4([Issue LMS Certificates])
+    forbidden5([Handle Course Completion])
+    forbidden6([Become Full Landing Page Builder])
+    forbidden7([Run Complex CRM Outbound Automation])
+    forbidden8([Expose Public API in MVP])
+    forbidden9([Support Multi-Tenant Architecture in MVP])
+    forbidden10([Handle Payment or Subscription])
+
+    allowed1 --> system
+    allowed2 --> system
+    allowed3 --> system
+    allowed4 --> system
+    allowed5 --> system
+    allowed6 --> system
+    allowed7 --> system
+    allowed8 --> system
+    allowed9 --> system
+    allowed10 --> system
+    allowed11 --> system
+    allowed12 --> system
+    allowed13 --> system
+    allowed14 --> system
+
+    system --> forbidden1
+    system --> forbidden2
+    system --> forbidden3
+    system --> forbidden4
+    system --> forbidden5
+    system --> forbidden6
+    system --> forbidden7
+    system --> forbidden8
+    system --> forbidden9
+    system --> forbidden10
+
+    class system center;
+    class allowed1,allowed2,allowed3,allowed4,allowed5,allowed6,allowed7,allowed8,allowed9,allowed10,allowed11,allowed12,allowed13,allowed14 allowed;
+    class forbidden1,forbidden2,forbidden3,forbidden4,forbidden5,forbidden6,forbidden7,forbidden8,forbidden9,forbidden10 forbidden;

@@ -1,0 +1,224 @@
+erDiagram
+    USERS {
+        bigint id PK
+        string name
+        string email UK
+        string password_hash
+        string role
+        string status
+        datetime last_login_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    SCOREBOARDS {
+        bigint id PK
+        string title
+        string slug UK
+        text description
+        string status
+        bigint created_by_user_id FK
+        datetime published_at
+        datetime archived_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    CATEGORIES {
+        bigint id PK
+        bigint scoreboard_id FK
+        string name
+        text description
+        int sort_order
+        string status
+        datetime created_at
+        datetime updated_at
+    }
+
+    QUESTIONS {
+        bigint id PK
+        bigint scoreboard_id FK
+        bigint category_id FK
+        text question_text
+        string question_type
+        int sort_order
+        boolean is_required
+        string status
+        datetime created_at
+        datetime updated_at
+    }
+
+    QUESTION_OPTIONS {
+        bigint id PK
+        bigint question_id FK
+        string label
+        decimal score_value
+        int sort_order
+        string status
+        datetime created_at
+        datetime updated_at
+    }
+
+    RESULT_RANGES {
+        bigint id PK
+        bigint scoreboard_id FK
+        string title
+        text description
+        text recommendation
+        decimal min_score
+        decimal max_score
+        string status
+        int sort_order
+        datetime created_at
+        datetime updated_at
+    }
+
+    PARTICIPANTS {
+        bigint id PK
+        string first_name
+        string last_name
+        string email
+        string whatsapp
+        string country
+        string source_type
+        string status
+        datetime first_seen_at
+        datetime last_seen_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    PARTICIPANT_ACCESS_LINKS {
+        bigint id PK
+        bigint participant_id FK
+        bigint scoreboard_id FK
+        string access_code UK
+        string access_url
+        string status
+        datetime issued_at
+        datetime expires_at
+        datetime last_accessed_at
+        datetime completed_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    SUBMISSIONS {
+        bigint id PK
+        bigint participant_id FK
+        bigint scoreboard_id FK
+        bigint participant_access_link_id FK
+        bigint result_range_id FK
+        string status
+        datetime started_at
+        datetime submitted_at
+        datetime finished_at
+        int time_taken_seconds
+        decimal overall_score
+        decimal overall_percent
+        string result_title_snapshot
+        text result_description_snapshot
+        string result_url
+        string result_pdf_url
+        string utm_source
+        string utm_campaign
+        string utm_medium
+        string utm_term
+        string utm_content
+        string referrer
+        string landing_page
+        string ip_address_country
+        string source_channel
+        datetime created_at
+        datetime updated_at
+    }
+
+    SUBMISSION_ANSWERS {
+        bigint id PK
+        bigint submission_id FK
+        bigint question_id FK
+        bigint question_option_id FK
+        bigint category_id FK
+        text question_text_snapshot
+        string option_label_snapshot
+        decimal score_value
+        datetime answered_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    SUBMISSION_CATEGORY_SCORES {
+        bigint id PK
+        bigint submission_id FK
+        bigint category_id FK
+        string category_name_snapshot
+        decimal actual_score
+        decimal max_score
+        decimal percentage_score
+        datetime created_at
+        datetime updated_at
+    }
+
+    PDF_REPORTS {
+        bigint id PK
+        bigint submission_id FK
+        bigint scoreboard_id FK
+        bigint result_range_id FK
+        string template_key
+        string file_path
+        string file_url
+        string status
+        datetime generated_at
+        datetime failed_at
+        text failure_reason
+        datetime created_at
+        datetime updated_at
+    }
+
+    EMAIL_LOGS {
+        bigint id PK
+        bigint submission_id FK
+        bigint participant_id FK
+        string email_to
+        string email_type
+        string subject
+        string status
+        string provider_message_id
+        datetime sent_at
+        datetime failed_at
+        text failure_reason
+        datetime created_at
+        datetime updated_at
+    }
+
+    USERS ||--o{ SCOREBOARDS : creates
+
+    SCOREBOARDS ||--o{ CATEGORIES : has
+    SCOREBOARDS ||--o{ QUESTIONS : has
+    SCOREBOARDS ||--o{ RESULT_RANGES : defines
+    SCOREBOARDS ||--o{ PARTICIPANT_ACCESS_LINKS : exposes
+    SCOREBOARDS ||--o{ SUBMISSIONS : receives
+
+    CATEGORIES ||--o{ QUESTIONS : groups
+    CATEGORIES ||--o{ SUBMISSION_ANSWERS : categorizes
+    CATEGORIES ||--o{ SUBMISSION_CATEGORY_SCORES : aggregates
+
+    QUESTIONS ||--o{ QUESTION_OPTIONS : offers
+    QUESTIONS ||--o{ SUBMISSION_ANSWERS : answered_in
+
+    QUESTION_OPTIONS ||--o{ SUBMISSION_ANSWERS : selected_in
+
+    RESULT_RANGES ||--o{ SUBMISSIONS : assigned_to
+    RESULT_RANGES ||--o{ PDF_REPORTS : informs
+
+    PARTICIPANTS ||--o{ PARTICIPANT_ACCESS_LINKS : receives
+    PARTICIPANTS ||--o{ SUBMISSIONS : makes
+    PARTICIPANTS ||--o{ EMAIL_LOGS : receives
+
+    PARTICIPANT_ACCESS_LINKS ||--o{ SUBMISSIONS : opens
+
+    SUBMISSIONS ||--o{ SUBMISSION_ANSWERS : stores
+    SUBMISSIONS ||--o{ SUBMISSION_CATEGORY_SCORES : summarizes
+    SUBMISSIONS ||--o{ PDF_REPORTS : generates
+    SUBMISSIONS ||--o{ EMAIL_LOGS : triggers
+

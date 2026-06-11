@@ -1,0 +1,53 @@
+flowchart TB
+    classDef actor fill:#f5f5f5,stroke:#555,stroke-width:1px,color:#111;
+    classDef usecase fill:#1f2937,stroke:#c44b36,stroke-width:1px,color:#fff;
+    classDef external fill:#fff7ed,stroke:#d97706,stroke-width:1px,color:#7c2d12;
+
+    participant["Participant / Calon Student"]
+    admin["Admin"]
+    external["External System / Webhook Source"]
+
+    uc1([Submit Internal Lead Form])
+    uc2([Send Inbound Webhook Lead])
+    uc3([Generate Participant Record])
+    uc4([Generate Unique Access URL])
+    uc5([Access Scoreboard])
+    uc6([Complete Assessment])
+    uc7([Calculate Scores])
+    uc8([Determine Result])
+    uc9([View Result Page])
+    uc10([Generate PDF Report])
+    uc11([Send Email Follow-Up])
+    uc12([Manage Scoreboards])
+    uc13([Manage Categories Questions Options])
+    uc14([Manage Result Ranges])
+    uc15([Publish Scoreboard])
+    uc16([Review Submissions Scores Answers Tracking])
+
+    participant --> uc1
+    participant --> uc5
+    participant --> uc6
+    participant --> uc9
+
+    external --> uc2
+
+    admin --> uc12
+    admin --> uc13
+    admin --> uc14
+    admin --> uc15
+    admin --> uc16
+
+    uc1 --> uc3
+    uc2 --> uc3
+    uc3 --> uc4
+    uc4 --> uc5
+    uc5 --> uc6
+    uc6 --> uc7
+    uc7 --> uc8
+    uc8 --> uc9
+    uc8 --> uc10
+    uc8 --> uc11
+
+    class participant,admin actor;
+    class external external;
+    class uc1,uc2,uc3,uc4,uc5,uc6,uc7,uc8,uc9,uc10,uc11,uc12,uc13,uc14,uc15,uc16 usecase;

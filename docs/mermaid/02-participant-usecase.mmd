@@ -1,0 +1,51 @@
+flowchart TB
+    classDef actor fill:#f5f5f5,stroke:#555,stroke-width:1px,color:#111;
+    classDef usecase fill:#111827,stroke:#c44b36,stroke-width:1px,color:#fff;
+    classDef alt fill:#0f172a,stroke:#d1a15b,stroke-width:1px,color:#fff;
+
+    participant["Participant / Calon Student"]
+
+    lead([Fill Internal Lead Form])
+    access([Receive or Open Unique Access URL])
+    openQuiz([Open Scoreboard Landing / Intro])
+    answer([Answer Questions])
+    validate([Pass Required Answer Validation])
+    submit([Submit Assessment])
+    score([System Calculates Overall and Category Scores])
+    result([System Determines Result Range])
+    view([View Result Page])
+    pdf([Receive PDF Report])
+    email([Receive Email Follow-Up])
+
+    invalidLead([Fix Invalid Lead Form Data])
+    invalidUrl([See Invalid or Expired URL State])
+    incomplete([Complete Missing Required Answers])
+    resultOnly([Reopen Existing Result State])
+
+    participant --> lead
+    participant --> access
+    participant --> openQuiz
+    participant --> answer
+    participant --> submit
+    participant --> view
+    participant --> pdf
+    participant --> email
+
+    lead --> access
+    access --> openQuiz
+    access -. invalid or expired .-> invalidUrl
+    openQuiz --> answer
+    answer --> validate
+    validate --> submit
+    validate -. incomplete .-> incomplete
+    submit --> score
+    score --> result
+    result --> view
+    result --> pdf
+    result --> email
+    access -. already completed .-> resultOnly
+    lead -. invalid form .-> invalidLead
+
+    class participant actor;
+    class lead,access,openQuiz,answer,validate,submit,score,result,view,pdf,email usecase;
+    class invalidLead,invalidUrl,incomplete,resultOnly alt;
