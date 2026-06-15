@@ -3,7 +3,7 @@ import { Input } from '@/Components/ui/input';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Head, useForm } from '@inertiajs/react';
 
-export default function PublicScoreboardLeadForm({ scoreboard, status }) {
+export default function PublicScoreboardLeadForm({ scoreboard, status, countryOptions = [] }) {
     const { data, setData, post, processing, errors } = useForm({
         first_name: '',
         last_name: '',
@@ -114,11 +114,20 @@ export default function PublicScoreboardLeadForm({ scoreboard, status }) {
                                     <label className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
                                         Country
                                     </label>
-                                    <Input
+                                    <select
                                         value={data.country}
                                         onChange={(event) => setData('country', event.target.value)}
-                                        className="border-white/10 bg-white/5 text-white placeholder:text-white/35"
-                                    />
+                                        className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"
+                                    >
+                                        <option value="" className="text-slate-900">
+                                            Select country
+                                        </option>
+                                        {countryOptions.map((country) => (
+                                            <option key={country} value={country} className="text-slate-900">
+                                                {country}
+                                            </option>
+                                        ))}
+                                    </select>
                                     {errors.country ? (
                                         <div className="text-sm text-rose-300">{errors.country}</div>
                                     ) : null}

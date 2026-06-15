@@ -56,8 +56,17 @@ class ScoreboardOptionController extends Controller
             $validated['score_value'] = null;
         }
 
-        if (! $validated['jump_enabled']) {
+        if (
+            $question->question_type === 'multiple_choice_checkboxes' ||
+            ! in_array($question->question_type, ['yes_no_maybe', 'multiple_choice_buttons', 'radio_buttons', 'image_button'], true) ||
+            ! $validated['jump_enabled']
+        ) {
+            $validated['jump_enabled'] = false;
             $validated['jump_to_question_id'] = null;
+        }
+
+        if ($option->is_other_option) {
+            $validated['is_other_option'] = true;
         }
 
         if ($request->hasFile('image')) {

@@ -3,7 +3,9 @@
 use App\Http\Controllers\Admin\ScoreboardController;
 use App\Http\Controllers\Admin\ScoreboardDesignController;
 use App\Http\Controllers\Admin\ScoreboardOptionController;
+use App\Http\Controllers\Admin\ScoreboardPreviewController;
 use App\Http\Controllers\Admin\ScoreboardQuestionController;
+use App\Http\Controllers\Admin\ScoreboardResultController;
 use App\Http\Controllers\Admin\ScoreboardResultRangeController;
 use App\Http\Controllers\Admin\SubmissionController;
 use App\Http\Controllers\ProfileController;
@@ -59,6 +61,14 @@ Route::middleware('auth')->group(function () {
             ->scoped();
         Route::get('scoreboards/{assessment}/builder/{question?}', [ScoreboardController::class, 'builder'])
             ->name('scoreboards.builder');
+        Route::get('scoreboards/{assessment}/preview', ScoreboardPreviewController::class)
+            ->name('scoreboards.preview');
+        Route::get('scoreboards/{assessment}/results', [ScoreboardResultController::class, 'index'])
+            ->name('scoreboards.results.index');
+        Route::get('scoreboards/{assessment}/results/{submission}', [ScoreboardResultController::class, 'show'])
+            ->name('scoreboards.results.show');
+        Route::delete('scoreboards/{assessment}/results/{submission}', [ScoreboardResultController::class, 'destroy'])
+            ->name('scoreboards.results.destroy');
         Route::post('scoreboards/{assessment}/questions', [ScoreboardQuestionController::class, 'store'])
             ->name('scoreboards.questions.store');
         Route::patch('scoreboards/{assessment}/questions/{question}', [ScoreboardQuestionController::class, 'update'])

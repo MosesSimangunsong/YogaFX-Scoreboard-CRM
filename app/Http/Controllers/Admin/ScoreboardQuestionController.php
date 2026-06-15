@@ -151,5 +151,14 @@ class ScoreboardQuestionController extends Controller
                 ],
             );
         }
+
+        if (
+            $question->question_type !== 'multiple_choice_buttons' ||
+            ! $question->allow_other_option
+        ) {
+            $question->options()
+                ->where('is_other_option', true)
+                ->delete();
+        }
     }
 }

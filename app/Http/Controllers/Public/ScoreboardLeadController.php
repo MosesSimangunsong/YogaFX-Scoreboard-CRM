@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\Scoreboard;
+use App\Support\Countries;
 use App\Services\Participants\IssueParticipantAccessLink;
 use App\Services\Participants\UpsertParticipantFromLead;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,6 +29,7 @@ class ScoreboardLeadController extends Controller
                 'duration_minutes' => $scoreboard->duration_minutes,
                 'show_progress_bar' => $scoreboard->show_progress_bar,
             ],
+            'countryOptions' => Countries::names(),
             'status' => session('status'),
         ]);
     }
@@ -44,7 +47,7 @@ class ScoreboardLeadController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'whatsapp' => ['required', 'string', 'max:50'],
-            'country' => ['nullable', 'string', 'max:120'],
+            'country' => ['nullable', 'string', 'max:120', Rule::in(Countries::names())],
         ]);
 
         $participant = $upsertParticipant->execute($validated, 'internal_form');

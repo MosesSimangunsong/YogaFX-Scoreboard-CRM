@@ -3,12 +3,30 @@ import { Input } from '@/Components/ui/input';
 import { Textarea } from '@/Components/ui/textarea';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useEffect } from 'react';
+
+function buildScaleValues(question) {
+    const min = Number(question.score_range_min ?? 1);
+    const max = Number(question.score_range_max ?? min);
+
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) {
+        return [];
+    }
+
+    const values = [];
+
+    for (let value = min; value <= max; value += 1) {
+        values.push(value);
+    }
+
+    return values.slice(0, 12);
+}
 
 function QuestionOptions({ question, data, setData }) {
     const selectedOptionIds = data.selected_option_ids ?? [];
     const isMultiSelect =
-        question.allow_multi_select ||
-        ['multiple_choice_buttons', 'multiple_choice_checkboxes'].includes(question.question_type);
+        question.question_type === 'multiple_choice_checkboxes' ||
+        question.allow_multi_select;
 
     const toggleOption = (optionId) => {
         if (isMultiSelect) {
@@ -82,6 +100,71 @@ function ScaleLabels({ question }) {
     );
 }
 
+function LinearScaleInput({ question, value, setValue }) {
+    const scaleValues = buildScaleValues(question);
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-wrap gap-3">
+                {scaleValues.map((item) => {
+                    const active = String(value) === String(item);
+
+                    return (
+                        <button
+                            key={item}
+                            type="button"
+                            onClick={() => setValue('answer_number', String(item))}
+                            className={[
+                                'inline-flex min-w-12 items-center justify-center rounded-2xl border px-4 py-3 text-sm font-semibold transition',
+                                active
+                                    ? 'border-[#d1a15b] bg-[#d1a15b]/15 text-white shadow-[0_16px_36px_rgba(209,161,91,0.16)]'
+                                    : 'border-white/10 bg-white/5 text-white/85 hover:border-white/20 hover:bg-white/10',
+                            ].join(' ')}
+                        >
+                            {item}
+                        </button>
+                    );
+                })}
+            </div>
+            <ScaleLabels question={question} />
+        </div>
+    );
+}
+
+function DividedScaleInput({ question, value, setValue }) {
+    const scaleValues = buildScaleValues(question);
+    const columnCount = Math.min(Math.max(Number(question.section_count || 2), 1), Math.max(scaleValues.length, 1));
+
+    return (
+        <div className="space-y-4">
+            <div
+                className="grid gap-3"
+                style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+            >
+                {scaleValues.map((item) => {
+                    const active = String(value) === String(item);
+
+                    return (
+                        <button
+                            key={item}
+                            type="button"
+                            onClick={() => setValue('answer_number', String(item))}
+                            className={[
+                                'inline-flex min-h-12 items-center justify-center rounded-2xl border px-4 py-3 text-sm font-semibold transition',
+                                active
+                                    ? 'border-[#d1a15b] bg-[#d1a15b]/15 text-white shadow-[0_16px_36px_rgba(209,161,91,0.16)]'
+                                    : 'border-white/10 bg-white/5 text-white/85 hover:border-white/20 hover:bg-white/10',
+                            ].join(' ')}
+                        >
+                            {item}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export default function PublicScoreboardAssessment({
     accessLink,
     scoreboard,
@@ -99,6 +182,21 @@ export default function PublicScoreboardAssessment({
         answer_number: answer.answer_number ?? '',
         other_text: answer.other_text ?? '',
     });
+
+    useEffect(() => {
+        setData('question_id', question.id);
+        setData('selected_option_ids', answer.selected_option_ids ?? []);
+        setData('answer_text', answer.answer_text ?? '');
+        setData('answer_number', answer.answer_number ?? '');
+        setData('other_text', answer.other_text ?? '');
+    }, [
+        answer.answer_number,
+        answer.answer_text,
+        answer.other_text,
+        answer.selected_option_ids,
+        question.id,
+        setData,
+    ]);
 
     const submit = (event) => {
         event.preventDefault();
@@ -206,7 +304,7 @@ export default function PublicScoreboardAssessment({
                                     </div>
                                 ) : null}
 
-                                {['numeric', 'sliding_scale', 'linear_scale', 'divided_scale'].includes(question.question_type) ? (
+                                {question.question_type === 'numeric' ? (
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
@@ -222,8 +320,38 @@ export default function PublicScoreboardAssessment({
                                                 className="border-white/10 bg-white/5 text-white placeholder:text-white/35"
                                             />
                                         </div>
+                                    </div>
+                                ) : null}
+
+                                {question.question_type === 'sliding_scale' ? (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                                                Your Score
+                                            </label>
+                                            <Input
+                                                type="range"
+                                                min={question.score_range_min ?? 0}
+                                                max={question.score_range_max ?? 10}
+                                                step={question.allow_decimals ? '0.01' : '1'}
+                                                value={data.answer_number || question.starting_score || question.score_range_min || 0}
+                                                onChange={(event) => setData('answer_number', event.target.value)}
+                                                className="h-12 border-none bg-transparent px-0"
+                                            />
+                                        </div>
+                                        <div className="text-sm font-medium text-white/80">
+                                            Selected: {data.answer_number || question.starting_score || question.score_range_min || 0}
+                                        </div>
                                         <ScaleLabels question={question} />
                                     </div>
+                                ) : null}
+
+                                {question.question_type === 'linear_scale' ? (
+                                    <LinearScaleInput question={question} value={data.answer_number} setValue={setData} />
+                                ) : null}
+
+                                {question.question_type === 'divided_scale' ? (
+                                    <DividedScaleInput question={question} value={data.answer_number} setValue={setData} />
                                 ) : null}
 
                                 {question.question_type === 'open_text' ? (

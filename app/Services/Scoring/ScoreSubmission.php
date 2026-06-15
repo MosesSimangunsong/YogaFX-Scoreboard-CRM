@@ -6,6 +6,7 @@ use App\Models\Scoreboard;
 use App\Models\ScoreboardQuestion;
 use App\Models\ScoreboardResultRange;
 use App\Models\Submission;
+use App\Support\Scoreboards\SubmissionMetrics;
 use Illuminate\Support\Collection;
 
 class ScoreSubmission
@@ -20,12 +21,22 @@ class ScoreSubmission
 
         $categoryScores = [];
         $overallScore = 0.0;
+        $gradableQuestionsCount = 0;
+        $correctAnswersCount = 0;
 
         foreach ($submission->answers as $answer) {
             $question = $answer->question;
 
             if (! $question) {
                 continue;
+            }
+
+            if (SubmissionMetrics::questionIsGradable($question)) {
+                $gradableQuestionsCount++;
+
+                if (SubmissionMetrics::answerIsCorrect($question, $answer)) {
+                    $correctAnswersCount++;
+                }
             }
 
             $answerScore = $this->resolveAnswerScore($question, $answer);
@@ -53,6 +64,10 @@ class ScoreSubmission
             $categoryScores[$categoryKey]['answered_questions_count']++;
         }
 
+        $percentage = $gradableQuestionsCount > 0
+            ? round(($correctAnswersCount / $gradableQuestionsCount) * 100, 2)
+            : null;
+
         $matchedRange = $this->matchResultRange(
             $submission->scoreboard,
             $overallScore,
@@ -74,6 +89,9 @@ class ScoreSubmission
                 'result_mode' => $submission->scoreboard->result_mode,
                 'category_keys' => array_keys($categoryScores),
                 'answered_questions_count' => $submission->answers->count(),
+                'gradable_questions_count' => $gradableQuestionsCount,
+                'correct_answers_count' => $correctAnswersCount,
+                'percentage' => $percentage,
             ],
             'scoreboard_result_range_id' => $matchedRange?->id,
             'result_title' => $matchedRange?->title,

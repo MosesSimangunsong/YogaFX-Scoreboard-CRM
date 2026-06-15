@@ -9,6 +9,8 @@ use App\Models\Submission;
 use App\Models\SubmissionAnswer;
 use App\Services\Delivery\QueueSubmissionResultDelivery;
 use App\Services\Scoring\ScoreSubmission;
+use App\Services\Scoreboards\ScoreboardFlow;
+use App\Support\Scoreboards\SubmissionMetrics;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,8 +19,11 @@ use Inertia\Response;
 
 class ScoreboardAssessmentController extends Controller
 {
-    public function show(Request $request, string $accessCode): Response|RedirectResponse
-    {
+    public function show(
+        Request $request,
+        string $accessCode,
+        ScoreboardFlow $flow,
+    ): Response|RedirectResponse {
         $accessLink = $this->resolveAccessLink($accessCode);
         $submission = $this->resolveDraftSubmission($accessLink);
 
@@ -33,12 +38,14 @@ class ScoreboardAssessmentController extends Controller
             $questions,
             $submission,
             $request->string('question')->toString(),
+            $accessLink->scoreboard->allow_back_navigation,
         );
 
-        $index = $questions->search(fn ($question) => $question->id === $currentQuestion->id);
-        $previousQuestion = $index > 0 ? $questions[$index - 1] : null;
-        $nextQuestion = $index < ($questions->count() - 1) ? $questions[$index + 1] : null;
+        $activePath = $flow->activePath($questions, $submission);
+        $activePathIndex = $activePath->search(fn ($question) => $question->id === $currentQuestion->id);
+        $previousQuestion = $activePathIndex > 0 ? $activePath[$activePathIndex - 1] : null;
         $existingAnswer = $submission->answers->firstWhere('scoreboard_question_id', $currentQuestion->id);
+        $nextQuestionId = $flow->nextQuestionId($questions, $currentQuestion, $existingAnswer);
 
         return Inertia::render('Public/Scoreboards/Assessment', [
             'accessLink' => [
@@ -62,11 +69,11 @@ class ScoreboardAssessmentController extends Controller
                 'started_at' => optional($submission->started_at)->toIso8601String(),
             ],
             'progress' => [
-                'current_step' => $index + 1,
+                'current_step' => max(1, ($activePathIndex === false ? $activePath->count() : $activePathIndex + 1)),
                 'total_steps' => $questions->count(),
-                'completed_steps' => $submission->answers->pluck('scoreboard_question_id')->unique()->count(),
+                'completed_steps' => collect(data_get($submission->progress_payload, 'visited_question_ids', []))->unique()->count(),
             ],
-            'question' => $this->serializeQuestion($currentQuestion),
+            'question' => $this->serializeQuestion($currentQuestion, $submission, $flow),
             'answer' => [
                 'selected_option_ids' => $existingAnswer?->selected_option_ids ?? [],
                 'answer_text' => $existingAnswer?->answer_text ?? '',
@@ -80,7 +87,7 @@ class ScoreboardAssessmentController extends Controller
                         'question' => $previousQuestion->id,
                     ])
                     : null,
-                'is_last_question' => $nextQuestion === null,
+                'is_last_question' => $nextQuestionId === null,
             ],
             'status' => session('status'),
         ]);
@@ -91,8 +98,8 @@ class ScoreboardAssessmentController extends Controller
         string $accessCode,
         ScoreSubmission $scoreSubmission,
         QueueSubmissionResultDelivery $queueSubmissionResultDelivery,
-    ): RedirectResponse
-    {
+        ScoreboardFlow $flow,
+    ): RedirectResponse {
         $accessLink = $this->resolveAccessLink($accessCode);
         $submission = $this->resolveDraftSubmission($accessLink);
 
@@ -107,21 +114,24 @@ class ScoreboardAssessmentController extends Controller
         abort_unless($question, 404);
 
         $validated = $this->validateAnswer($request, $question);
-
-        $this->upsertAnswer($submission, $question, $validated);
-
-        $orderedQuestionIds = $questions->pluck('id')->values();
-        $currentIndex = $orderedQuestionIds->search($question->id);
-        $nextQuestionId = $currentIndex < ($orderedQuestionIds->count() - 1)
-            ? $orderedQuestionIds[$currentIndex + 1]
-            : null;
+        $answer = $this->upsertAnswer($submission, $question, $validated);
+        $nextQuestionId = $flow->nextQuestionId($questions, $question, $answer);
+        $visitedQuestionIds = $flow->appendVisitedQuestion($submission, $question->id);
 
         if (! $nextQuestionId) {
             $submission->update([
                 'status' => 'submitted',
                 'submitted_at' => now(),
                 'completed_at' => now(),
+                'current_question_id' => null,
+                'last_answered_question_id' => $question->id,
+                'finished_reason' => 'completed',
+                'progress_payload' => [
+                    ...($submission->progress_payload ?? []),
+                    'visited_question_ids' => $visitedQuestionIds,
+                ],
             ]);
+
             $submission = $scoreSubmission->execute($submission);
             $queueSubmissionResultDelivery->execute($submission);
 
@@ -129,6 +139,16 @@ class ScoreboardAssessmentController extends Controller
                 ->route('public.scoreboards.completed', $accessLink->access_code)
                 ->with('status', 'assessment-delivery-queued');
         }
+
+        $submission->update([
+            'status' => 'in_progress',
+            'current_question_id' => $nextQuestionId,
+            'last_answered_question_id' => $question->id,
+            'progress_payload' => [
+                ...($submission->progress_payload ?? []),
+                'visited_question_ids' => $visitedQuestionIds,
+            ],
+        ]);
 
         return redirect()->route('public.scoreboards.assessment.show', [
             'accessCode' => $accessLink->access_code,
@@ -176,6 +196,10 @@ class ScoreboardAssessmentController extends Controller
                 'submitted_at' => optional($submission->submitted_at)->toIso8601String(),
                 'overall_score' => $submission->overall_score,
                 'scored_at' => optional($submission->scored_at)->toIso8601String(),
+                'correct_answers_count' => data_get($submission->score_payload, 'correct_answers_count'),
+                'gradable_questions_count' => data_get($submission->score_payload, 'gradable_questions_count'),
+                'percentage' => data_get($submission->score_payload, 'percentage'),
+                'time_taken' => SubmissionMetrics::resolveTimeTaken($submission),
             ],
             'result' => [
                 'title' => $submission->result_title,
@@ -248,30 +272,54 @@ class ScoreboardAssessmentController extends Controller
             return $existing;
         }
 
+        $firstQuestionId = $accessLink->scoreboard->questions
+            ->sortBy('sort_order')
+            ->first()?->id;
+
         return Submission::create([
             'scoreboard_id' => $accessLink->scoreboard_id,
             'participant_id' => $accessLink->participant_id,
             'participant_access_link_id' => $accessLink->id,
             'status' => 'in_progress',
             'started_at' => now(),
+            'current_question_id' => $firstQuestionId,
             'tracking_payload' => $accessLink->participant->tracking_payload,
+            'progress_payload' => [
+                'visited_question_ids' => [],
+            ],
         ])->load('answers');
     }
 
-    private function resolveCurrentQuestion($questions, Submission $submission, string $requestedQuestionId): ScoreboardQuestion
+    private function resolveCurrentQuestion(
+        $questions,
+        Submission $submission,
+        string $requestedQuestionId,
+        bool $allowBackNavigation,
+    ): ScoreboardQuestion
     {
-        if ($requestedQuestionId !== '') {
+        $activePathIds = collect(data_get($submission->progress_payload, 'visited_question_ids', []))
+            ->push($submission->current_question_id)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique();
+
+        if ($allowBackNavigation && $requestedQuestionId !== '') {
             $requested = $questions->firstWhere('id', (int) $requestedQuestionId);
 
-            if ($requested) {
+            if ($requested && $activePathIds->contains($requested->id)) {
                 return $requested;
             }
         }
 
-        $answeredQuestionIds = $submission->answers->pluck('scoreboard_question_id')->all();
+        if ($submission->current_question_id) {
+            $current = $questions->firstWhere('id', $submission->current_question_id);
 
-        return $questions->first(fn ($question) => ! in_array($question->id, $answeredQuestionIds, true))
-            ?? $questions->first();
+            if ($current) {
+                return $current;
+            }
+        }
+
+        return $questions->first();
     }
 
     private function validateAnswer(Request $request, ScoreboardQuestion $question): array
@@ -368,12 +416,23 @@ class ScoreboardAssessmentController extends Controller
         return $validated;
     }
 
-    private function upsertAnswer(Submission $submission, ScoreboardQuestion $question, array $validated): void
+    private function upsertAnswer(Submission $submission, ScoreboardQuestion $question, array $validated): ?SubmissionAnswer
     {
+        if ($question->question_type === 'info_screen') {
+            $submission->update([
+                'status' => 'in_progress',
+                'last_answered_at' => now(),
+            ]);
+
+            return null;
+        }
+
         $selectedOptionIds = collect($validated['selected_option_ids'] ?? [])
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();
+        $selectedOtherOption = $question->options
+            ->first(fn ($option) => $option->is_other_option && in_array($option->id, $selectedOptionIds, true));
 
         $selectedPrimaryOptionId = count($selectedOptionIds) === 1 ? $selectedOptionIds[0] : null;
         $selectedOptions = $question->options
@@ -388,7 +447,7 @@ class ScoreboardAssessmentController extends Controller
             ->values()
             ->all();
 
-        SubmissionAnswer::query()->updateOrCreate(
+        $answer = SubmissionAnswer::query()->updateOrCreate(
             [
                 'submission_id' => $submission->id,
                 'scoreboard_question_id' => $question->id,
@@ -396,7 +455,9 @@ class ScoreboardAssessmentController extends Controller
             [
                 'scoreboard_question_option_id' => $selectedPrimaryOptionId,
                 'selected_option_ids' => $selectedOptionIds,
-                'answer_text' => $validated['answer_text'] ?? null,
+                'answer_text' => $selectedOtherOption
+                    ? ($validated['other_text'] ?? null)
+                    : ($validated['answer_text'] ?? null),
                 'answer_number' => $validated['answer_number'] ?? null,
                 'answer_payload' => [
                     'question_type' => $question->question_type,
@@ -420,10 +481,15 @@ class ScoreboardAssessmentController extends Controller
             'status' => 'in_progress',
             'last_answered_at' => now(),
         ]);
+
+        return $answer;
     }
 
-    private function serializeQuestion(ScoreboardQuestion $question): array
-    {
+    private function serializeQuestion(
+        ScoreboardQuestion $question,
+        Submission $submission,
+        ScoreboardFlow $flow,
+    ): array {
         return [
             'id' => $question->id,
             'title' => $question->title,
@@ -437,12 +503,14 @@ class ScoreboardAssessmentController extends Controller
             'character_limit' => $question->character_limit,
             'score_range_min' => $question->score_range_min,
             'score_range_max' => $question->score_range_max,
+            'starting_score' => $question->starting_score,
+            'section_count' => $question->section_count,
             'allow_decimals' => $question->allow_decimals,
             'left_label' => $question->left_label,
             'center_label' => $question->center_label,
             'right_label' => $question->right_label,
-            'options' => $question->options
-                ->sortBy('sort_order')
+            'options' => $flow->stableOptions($question, $submission)
+                ->filter(fn ($option) => $question->question_type !== 'yes_no_maybe' || $question->show_maybe_answer || $option->internal_value !== 'maybe')
                 ->values()
                 ->map(fn ($option) => [
                     'id' => $option->id,

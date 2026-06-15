@@ -565,6 +565,22 @@ function BuilderWorkspaceBar({
 function PreviewOptionGrid({ question, values, optionDrafts }) {
     const previewColumns = Math.min(Math.max(Number(values.answers_per_row || 2), 1), 4);
     const options = question.options ?? [];
+    const buildScaleValues = () => {
+        const min = Number(values.score_range_min || 1);
+        const max = Number(values.score_range_max || min);
+
+        if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) {
+            return [];
+        }
+
+        const items = [];
+
+        for (let value = min; value <= max; value += 1) {
+            items.push(value);
+        }
+
+        return items.slice(0, 12);
+    };
 
     if (values.question_type === 'info_screen') {
         return (
@@ -576,6 +592,52 @@ function PreviewOptionGrid({ question, values, optionDrafts }) {
 
     if (!optionBasedTypes.includes(values.question_type)) {
         if (scaleTypes.includes(values.question_type)) {
+            const scaleValues = buildScaleValues();
+
+            if (values.question_type === 'linear_scale') {
+                return (
+                    <div className="space-y-5 rounded-3xl border border-white/70 bg-white/85 p-5">
+                        <div className="flex flex-wrap gap-3">
+                            {scaleValues.map((item) => (
+                                <div
+                                    key={item}
+                                    className="inline-flex min-w-12 items-center justify-center rounded-2xl border border-slate-200 bg-[#f8f6f0] px-4 py-3 text-sm font-semibold text-slate-700"
+                                >
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex items-center justify-between gap-3 text-sm text-slate-500">
+                            <span>{values.left_label || 'Low'}</span>
+                            <span>{values.center_label || 'Balanced'}</span>
+                            <span>{values.right_label || 'High'}</span>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (values.question_type === 'divided_scale') {
+                const columnCount = Math.min(Math.max(Number(values.section_count || 2), 1), Math.max(scaleValues.length, 1));
+
+                return (
+                    <div className="space-y-5 rounded-3xl border border-white/70 bg-white/85 p-5">
+                        <div
+                            className="grid gap-3"
+                            style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+                        >
+                            {scaleValues.map((item) => (
+                                <div
+                                    key={item}
+                                    className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-[#f8f6f0] px-4 py-3 text-sm font-semibold text-slate-700"
+                                >
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
             return (
                 <div className="space-y-5 rounded-3xl border border-white/70 bg-white/85 p-5">
                     <input

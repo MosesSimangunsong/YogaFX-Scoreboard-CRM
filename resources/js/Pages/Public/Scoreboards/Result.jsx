@@ -52,6 +52,37 @@ export default function PublicScoreboardResult({
 
                             <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-4">
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                                    Correct Answers
+                                </div>
+                                <div className="mt-2 text-sm font-medium text-white">
+                                    {submission.gradable_questions_count > 0
+                                        ? `${submission.correct_answers_count} / ${submission.gradable_questions_count}`
+                                        : 'Not applicable'}
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-4">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                                    Percentage
+                                </div>
+                                <div className="mt-2 text-sm font-medium text-white">
+                                    {submission.percentage === null || submission.percentage === undefined
+                                        ? 'Not applicable'
+                                        : `${submission.percentage}%`}
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-4">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                                    Time Taken
+                                </div>
+                                <div className="mt-2 text-sm font-medium text-white">
+                                    {submission.time_taken?.display ?? 'Unavailable'}
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-4">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
                                     Email Delivery
                                 </div>
                                 <div className="mt-2 text-sm font-medium text-white">

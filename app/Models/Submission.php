@@ -19,10 +19,14 @@ class Submission extends Model
         'started_at',
         'submitted_at',
         'completed_at',
+        'current_question_id',
+        'last_answered_question_id',
+        'finished_reason',
         'last_answered_at',
         'overall_score',
         'score_payload',
         'tracking_payload',
+        'progress_payload',
         'scoreboard_result_range_id',
         'result_title',
         'result_description',
@@ -38,6 +42,7 @@ class Submission extends Model
         'overall_score' => 'decimal:2',
         'score_payload' => 'array',
         'tracking_payload' => 'array',
+        'progress_payload' => 'array',
         'scored_at' => 'datetime',
     ];
 

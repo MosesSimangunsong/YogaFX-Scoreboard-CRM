@@ -7,6 +7,7 @@ const statusMessages = {
     'scoreboard-created': 'Scoreboard has been created and is ready for building.',
     'scoreboard-updated': 'Scoreboard meta has been updated.',
     'scoreboard-deleted': 'Scoreboard has been deleted.',
+    'scoreboard-result-deleted': 'Scoreboard result has been deleted.',
 };
 
 export default function ScoreboardsIndex({ scoreboards, status }) {
@@ -107,6 +108,26 @@ export default function ScoreboardsIndex({ scoreboards, status }) {
                                                 )}
                                             >
                                                 Open Builder
+                                            </Link>
+                                        </Button>
+                                        <Button asChild variant="outline">
+                                            <Link
+                                                href={route(
+                                                    'admin.scoreboards.preview',
+                                                    scoreboard.id,
+                                                )}
+                                            >
+                                                Preview
+                                            </Link>
+                                        </Button>
+                                        <Button asChild variant="outline">
+                                            <Link
+                                                href={route(
+                                                    'admin.scoreboards.results.index',
+                                                    scoreboard.id,
+                                                )}
+                                            >
+                                                View Results
                                             </Link>
                                         </Button>
                                         <Button asChild variant="outline">
